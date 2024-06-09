@@ -11,10 +11,23 @@ const Game = () => {
     const [gameNumber, setGameNumber] = useState('');
     const [currentGame, setCurrentGame] = useState(null);
     const [status, setStatus] = useState('');
+    const [mySymbol, setMySymbol] = useState('');
+    const [hasStarted, setHasStarted] = useState(false);
+
+    useEffect(() => {
+        let statusTimer;
+        if (status) {
+            statusTimer = setTimeout(() => {
+                setStatus('');
+            }, 5000); // 5000 milliseconds = 5 seconds
+        }
+        return () => {
+            clearTimeout(statusTimer); // Clear the timer on cleanup
+        };
+    }, [status]);
 
     useEffect(() => {
         socket.on('move', ({ gameNumber, index, symbol }) => {
-            console.log(gameNumber, index, symbol)
             setBoard(prevBoard => {
                 const newBoard = [...prevBoard];
                 newBoard[index] = symbol;
@@ -34,7 +47,12 @@ const Game = () => {
         });
 
         socket.on('userJoined', ({ userId }) => {
+            setHasStarted(true);
             setStatus(`User ${userId} joined the game`);
+        });
+
+        socket.on('resetGame', () => {
+            reset(false);
         });
 
         socket.on('error', (error) => {
@@ -46,6 +64,7 @@ const Game = () => {
             socket.off('gameCreated');
             socket.off('gameJoined');
             socket.off('userJoined');
+            socket.off('resetGame');
             socket.off('error');
         };
     }, []);
@@ -55,29 +74,45 @@ const Game = () => {
             setStatus('Create or join a game first!');
             return;
         }
+        if (!hasStarted) {
+            setStatus('Please wait for opponent to join');
+            return;
+        }
         if (board[index] || calculateWinner(board)) return;
+        if (isXNext && mySymbol != 'X') {
+            setStatus('Please wait for opponent\'s move');
+            return;
+        }
+        if (isXNext == false && mySymbol == 'X') {
+            setStatus('Please wait for opponent\'s move');
+            return;
+        }
         const symbol = isXNext ? 'X' : 'O';
         socket.emit('move', { gameNumber: currentGame, index, symbol });
     };
 
-    const reset = () => {
+    const reset = (isUserInitiated = true) => {
         setBoard(Array(9).fill(null));
         setIsXNext(true);
+        if (isUserInitiated) {
+            socket.emit('resetGame', currentGame);
+        }
     };
 
     const handleCreateGame = () => {
+        setMySymbol('X');
         socket.emit('createGame');
     };
 
     const handleJoinGame = () => {
         if (!gameNumber) return;
+        setMySymbol('O');
         socket.emit('joinGame', gameNumber);
     };
 
     const winner = calculateWinner(board);
     const isBoardFull = board.every(cell => cell !== null);
     const gameStatus = winner ? `Winner: ${winner}` : isBoardFull ? 'Tie Match' : `Next player: ${isXNext ? 'X' : 'O'}`;
-
     return (
         <div className={styles.game}>
             <div className={styles.controls}>
@@ -97,11 +132,13 @@ const Game = () => {
                     </div>
                 )}
                 {status && <div className={styles.status}>{status}</div>}
+                {currentGame && <div className={styles.status}>{`Game No: ${currentGame}`}</div>}
                 {(currentGame && gameStatus) && <div className={styles.status}>{gameStatus}</div>}
+                {(currentGame && mySymbol) && <div className={styles.status}>{`You are ${mySymbol}`}</div>}
             </div>
             <div className={styles.board}>
                 {board.map((cell, index) => (
-                    <button key={index} className={styles.cell} onClick={() => handleClick(index)} disabled={false}>
+                    <button key={index} className={styles.cell} onClick={() => handleClick(index)}>
                         {cell}
                     </button>
                 ))}
@@ -110,7 +147,7 @@ const Game = () => {
                 <button
                     type="button"
                     className={styles.resetButton}
-                    onClick={reset}
+                    onClick={()=>reset(true)}
                 >
                     Reset
                 </button>

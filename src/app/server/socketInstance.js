@@ -26,10 +26,14 @@ io.on('connection', (socket) => {
     socket.on('joinGame', (gameNumber) => {
         if (gameRooms[gameNumber]) {
             socket.join(gameNumber);
-            gameRooms[gameNumber].push(socket.id);
-            socket.emit('gameJoined', { gameNumber });
-            io.to(gameNumber).emit('userJoined', { userId: socket.id });
-            console.log(`User joined game number: ${gameNumber}`);
+            if (gameRooms[gameNumber].length == 2)
+                socket.emit('error', 'Game is already full');
+            else {
+                gameRooms[gameNumber].push(socket.id);
+                socket.emit('gameJoined', { gameNumber });
+                io.to(gameNumber).emit('userJoined', { userId: socket.id });
+                console.log(`User joined game number: ${gameNumber}`);
+            }
         } else {
             socket.emit('error', 'Invalid game number');
         }
@@ -38,12 +42,20 @@ io.on('connection', (socket) => {
     // Handle game moves
     socket.on('move', (data) => {
         const { gameNumber, index, symbol } = data;
-        console.log(data);
         if (gameRooms[gameNumber]) {
             io.to(gameNumber).emit('move', data);
             console.log(`Move in game ${gameNumber}: ${index} ${symbol}`);
         } else {
             socket.emit('error', 'Invalid game number');
+        }
+    });
+
+    socket.on('resetGame', (gameNumber) => {
+        if (gameRooms[gameNumber]) {
+            io.to(gameNumber).emit('resetGame');
+            console.log(`Reset game number: ${gameNumber}`);
+        } else {
+            socket.emit('error', 'Invalid game number x');
         }
     });
 
