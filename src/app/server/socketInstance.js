@@ -3,7 +3,7 @@
 const http = require('http');
 const io = require('socket.io')({
     cors: {
-        origin: "http://localhost:3000",
+        origin: process.env.CORS_ORIGIN || "http://localhost:3000",
         methods: ["GET", "POST"]
     }
 });
@@ -25,10 +25,10 @@ io.on('connection', (socket) => {
     // User joins an existing game
     socket.on('joinGame', (gameNumber) => {
         if (gameRooms[gameNumber]) {
-            socket.join(gameNumber);
             if (gameRooms[gameNumber].length == 2)
                 socket.emit('error', 'Game is already full');
             else {
+                socket.join(gameNumber);
                 gameRooms[gameNumber].push(socket.id);
                 socket.emit('gameJoined', { gameNumber });
                 io.to(gameNumber).emit('userJoined', { userId: socket.id });
