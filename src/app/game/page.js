@@ -1,6 +1,8 @@
+// page.js
 "use client";
 import { useState, useEffect } from 'react';
-import styles from './Game.module.css'; // Create Game.module.css for styles
+import { CopyToClipboard } from 'react-copy-to-clipboard';
+import Image from 'next/image';
 import io from 'socket.io-client';
 
 const socket = io('http://localhost:3001');
@@ -113,32 +115,40 @@ const Game = () => {
     const winner = calculateWinner(board);
     const isBoardFull = board.every(cell => cell !== null);
     const gameStatus = winner ? `Winner: ${winner}` : isBoardFull ? 'Tie Match' : `Next player: ${isXNext ? 'X' : 'O'}`;
+
     return (
-        <div className={styles.game}>
-            <div className={styles.controls}>
+        <div className="p-4 bg-gray-100 min-h-screen flex flex-col items-center">
+            <div className="mb-6 text-center">
                 {!currentGame && (
                     <div>
-                        <button onClick={handleCreateGame} className={styles.button}>Create Game</button>
-                        <div>
+                        <button onClick={handleCreateGame} className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">Create Game</button>
+                        <div className="mt-4 flex items-center space-x-2">
                             <input
                                 type="text"
                                 value={gameNumber}
                                 onChange={(e) => setGameNumber(e.target.value)}
                                 placeholder="Enter game number"
-                                className={styles.input}
+                                className="px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring focus:border-blue-300"
                             />
-                            <button onClick={handleJoinGame} className={styles.button}>Join Game</button>
+                            <button onClick={handleJoinGame} className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600">Join Game</button>
                         </div>
                     </div>
                 )}
-                {status && <div className={styles.status}>{status}</div>}
-                {currentGame && <div className={styles.status}>{`Game No: ${currentGame}`}</div>}
-                {(currentGame && gameStatus) && <div className={styles.status}>{gameStatus}</div>}
-                {(currentGame && mySymbol) && <div className={styles.status}>{`You are ${mySymbol}`}</div>}
+                {currentGame && (
+                    <div className="mt-2 text-lg font-bold text-gray-700 items-center justify-center flex">
+                        {`Game No: ${currentGame}`}
+                        <CopyToClipboard text={currentGame} onCopy={() => setStatus('Game number copied!')}>
+                            <Image src="/images/copy.png" alt="Copy Game Number" width={15} height={20} className="ml-2 cursor-pointer" /> 
+                        </CopyToClipboard>
+                    </div>
+                )}
+                {(currentGame && gameStatus) && <div className="mt-2 text-lg text-gray-700">{gameStatus}</div>}
+                {(currentGame && mySymbol) && <div className="mt-2 text-lg text-gray-700">{`You are ${mySymbol}`}</div>}
+                {status && <div className="mt-2 text-red-500">{status}</div>}
             </div>
-            <div className={styles.board}>
+            <div className="grid grid-cols-3 gap-2">
                 {board.map((cell, index) => (
-                    <button key={index} className={styles.cell} onClick={() => handleClick(index)}>
+                    <button key={index} className="w-20 h-20 bg-white border border-gray-300 text-xl flex items-center justify-center hover:bg-gray-100" onClick={() => handleClick(index)}>
                         {cell}
                     </button>
                 ))}
@@ -146,7 +156,7 @@ const Game = () => {
             {(gameStatus.includes("Winner") || gameStatus.includes('Tie')) && (
                 <button
                     type="button"
-                    className={styles.resetButton}
+                    className="mt-4 px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
                     onClick={()=>reset(true)}
                 >
                     Reset
